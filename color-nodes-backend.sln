@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.36105.23 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "color-nodes-backend", "color-nodes-backend\color-nodes-backend.csproj", "{B1DDD169-FF6B-4D66-8036-EE0F43723B56}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B1DDD169-FF6B-4D66-8036-EE0F43723B56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1DDD169-FF6B-4D66-8036-EE0F43723B56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1DDD169-FF6B-4D66-8036-EE0F43723B56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1DDD169-FF6B-4D66-8036-EE0F43723B56}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D85B6FC5-0EE4-4CAB-A859-CF1CDE47F278}
+	EndGlobalSection
+EndGlobal

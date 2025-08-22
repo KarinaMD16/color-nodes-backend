@@ -1,0 +1,6 @@
+@color_nodes_backend_HostAddress = http://localhost:5197
+
+GET {{color_nodes_backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
