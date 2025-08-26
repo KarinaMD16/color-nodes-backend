@@ -43,19 +43,25 @@ public class RoomController : ControllerBase
         }
     }
 
-    [HttpPost("leave/{roomId}/{userId}")]
-    public async Task<IActionResult> LeaveRoom(int roomId, int userId)
+    // POST: api/room/leave/{code}/{userId}
+    [HttpPost("leave/{code}/{userId}")]
+    public async Task<IActionResult> LeaveRoom(string code, int userId)
     {
         try
         {
-            await _roomService.LeaveRoomAsync(roomId, userId);
+            await _roomService.LeaveRoomAsync(code, userId);
             return Ok();
         }
-        catch (Exception ex)
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
     }
+
 
     [HttpGet("{code}")]
     public async Task<IActionResult> GetRoomByCode(string code)

@@ -57,33 +57,42 @@ public class RoomService : IRoomService
         return MapToDto(room);
     }
 
-    public async Task LeaveRoomAsync(int roomId, int userId)
+    public async Task LeaveRoomAsync(string code, int userId)
     {
-        var room = await _context.Rooms.Include(r => r.Users)
-            .FirstOrDefaultAsync(r => r.Id == roomId);
-        if (room == null) throw new KeyNotFoundException("Sala no encontrada.");
+        var room = await _context.Rooms
+            .Include(r => r.Users)
+            .FirstOrDefaultAsync(r => r.Code == code && r.isActive);
+
+        if (room == null)
+            throw new KeyNotFoundException("Sala no encontrada o inactiva.");
 
         var user = room.Users.FirstOrDefault(u => u.Id == userId);
-        if (user == null) throw new InvalidOperationException("El usuario no pertenece a esta sala.");
+        if (user == null)
+            throw new InvalidOperationException("El usuario no pertenece a esta sala.");
 
+        // quitar usuario de la sala
         room.Users.Remove(user);
         user.RoomId = null;
 
+        // si era el líder
         if (room.LeaderId == userId)
         {
             if (room.Users.Any())
             {
+                // asignar nuevo líder al azar
                 var randomIndex = _random.Next(room.Users.Count);
                 room.LeaderId = room.Users[randomIndex].Id;
             }
             else
             {
+                // no quedan usuarios -> marcar inactiva
                 room.isActive = false;
             }
         }
 
         await _context.SaveChangesAsync();
     }
+
 
     public async Task<RoomDto?> GetRoomByCodeAsync(string code)
     {
