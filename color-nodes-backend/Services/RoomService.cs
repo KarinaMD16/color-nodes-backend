@@ -3,135 +3,143 @@ using color_nodes_backend.DTOs;
 using color_nodes_backend.Entities;
 using Microsoft.EntityFrameworkCore;
 
-public class RoomService : IRoomService
+namespace color_nodes_backend.Services
 {
-    private readonly AppDbContext _context;
-    private readonly Random _random = new();
-
-    public RoomService(AppDbContext context)
+    public class RoomService : IRoomService
     {
-        _context = context;
-    }
+        private readonly AppDbContext _context;
+        private readonly Random _random = new();
 
-    public async Task<RoomDto> CreateRoomAsync(int leaderId)
-    {
-        var leader = await _context.Users.FindAsync(leaderId);
-        if (leader == null)
-            throw new KeyNotFoundException("Usuario líder no encontrado.");
-
-        var room = new Room
+        public RoomService(AppDbContext context)
         {
-            LeaderId = leaderId,
-            Code = GenerateRoomCode(),
-            isActive = true,
-            Users = new List<User> { leader }
-        };
-        leader.Room = room;
-
-        _context.Rooms.Add(room);
-        await _context.SaveChangesAsync();
-
-        return MapToDto(room);
-    }
-
-    public async Task<RoomDto?> JoinRoomAsync(string code, int userId)
-    {
-        var room = await _context.Rooms.Include(r => r.Users)
-            .FirstOrDefaultAsync(r => r.Code == code && r.isActive);
-
-        if (room == null) throw new KeyNotFoundException("Sala no encontrada o inactiva.");
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null) throw new KeyNotFoundException("Usuario no encontrado.");
-
-        if (room.Users.Any(u => u.Id == userId))
-            throw new InvalidOperationException("El usuario ya está en esta sala.");
-
-        if (room.Users.Count >= 4)
-            throw new InvalidOperationException("La sala ya está llena (máximo 4 jugadores).");
-
-        room.Users.Add(user);
-        user.RoomId = room.Id;
-
-        await _context.SaveChangesAsync();
-        return MapToDto(room);
-    }
-
-    public async Task LeaveRoomAsync(string code, int userId)
-    {
-        var room = await _context.Rooms
-            .Include(r => r.Users)
-            .FirstOrDefaultAsync(r => r.Code == code && r.isActive);
-
-        if (room == null)
-            throw new KeyNotFoundException("Sala no encontrada o inactiva.");
-
-        var user = room.Users.FirstOrDefault(u => u.Id == userId);
-        if (user == null)
-            throw new InvalidOperationException("El usuario no pertenece a esta sala.");
-
-        // quitar usuario de la sala
-        room.Users.Remove(user);
-        user.RoomId = null;
-
-        // si era el líder
-        if (room.LeaderId == userId)
-        {
-            if (room.Users.Any())
-            {
-                // asignar nuevo líder al azar
-                var randomIndex = _random.Next(room.Users.Count);
-                room.LeaderId = room.Users[randomIndex].Id;
-            }
-            else
-            {
-                // no quedan usuarios -> marcar inactiva
-                room.isActive = false;
-            }
+            _context = context;
         }
 
-        await _context.SaveChangesAsync();
-    }
-
-
-    public async Task<RoomDto?> GetRoomByCodeAsync(string code)
-    {
-        var room = await _context.Rooms.Include(r => r.Users)
-            .FirstOrDefaultAsync(r => r.Code == code && r.isActive);
-        return room == null ? null : MapToDto(room);
-    }
-
-    public async Task<RoomDto?> GetRoomByIdAsync(int roomId)
-    {
-        var room = await _context.Rooms.Include(r => r.Users)
-            .FirstOrDefaultAsync(r => r.Id == roomId && r.isActive);
-        return room == null ? null : MapToDto(room);
-    }
-
-    public async Task<List<RoomDto>> GetActiveRoomsAsync()
-    {
-        var rooms = await _context.Rooms.Include(r => r.Users)
-            .Where(r => r.isActive)
-            .ToListAsync();
-        return rooms.Select(MapToDto).ToList();
-    }
-
-    // mapeo Room -> RoomDto
-    private RoomDto MapToDto(Room room)
-    {
-        return new RoomDto
+        // ✅ Crear sala y líder
+        public async Task<RoomResponse> CreateRoomAsync(string username)
         {
-            Id = room.Id,
-            Code = room.Code,
-            LeaderId = room.LeaderId,
-            UserIds = room.Users.Select(u => u.Id).ToList()
-        };
-    }
+            // Verificar que usuario no esté ya en otra sala
+            var existingUser = await _context.Users
+                .Include(u => u.Room)
+                .FirstOrDefaultAsync(u => u.Username == username);
 
-    private string GenerateRoomCode()
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return new string(Enumerable.Repeat(chars, 6)
-            .Select(s => s[_random.Next(s.Length)]).ToArray());
+            if (existingUser != null && existingUser.RoomId != null)
+                throw new InvalidOperationException($"El usuario {username} ya está en una sala.");
+
+            var user = existingUser ?? new User { Username = username };
+            if (existingUser == null) _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            var room = new Room
+            {
+                Code = Guid.NewGuid().ToString("N")[..6].ToUpper(),
+                LeaderId = user.Id,
+                Users = new List<User> { user }
+            };
+
+            _context.Rooms.Add(room);
+            await _context.SaveChangesAsync();
+
+            return new RoomResponse
+            {
+                Code = room.Code,
+                LeaderId = room.LeaderId,
+                Users = room.Users.Select(u => u.Username).ToList()
+            };
+        }
+
+        // ✅ Unirse a sala
+        public async Task<RoomResponse> JoinRoomAsync(string username, string roomCode)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.Users)
+                .FirstOrDefaultAsync(r => r.Code == roomCode);
+
+            if (room == null) throw new KeyNotFoundException("Sala no encontrada.");
+
+            // Verificar que usuario no esté en otra sala
+            var existingUser = await _context.Users
+                .Include(u => u.Room)
+                .FirstOrDefaultAsync(u => u.Username == username);
+
+            if (existingUser != null && existingUser.RoomId != null && existingUser.RoomId != room.Id)
+                throw new InvalidOperationException($"El usuario {username} ya está en otra sala.");
+
+            var user = existingUser ?? new User { Username = username };
+            if (existingUser == null) _context.Users.Add(user);
+
+            room.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            return new RoomResponse
+            {
+                Code = room.Code,
+                LeaderId = room.LeaderId,
+                Users = room.Users.Select(u => u.Username).ToList()
+            };
+        }
+
+        // ✅ Salir de sala con userId
+        public async Task<string> LeaveRoomAsync(int userId)
+        {
+            var user = await _context.Users
+                .Include(u => u.Room)
+                .ThenInclude(r => r.Users)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null || user.Room == null)
+                throw new InvalidOperationException("El usuario no está en ninguna sala.");
+
+            var room = user.Room;
+            room.Users.Remove(user);
+            user.RoomId = null;
+
+            // Si el líder sale, pasar liderazgo a otro random
+            if (room.LeaderId == user.Id && room.Users.Any())
+            {
+                var newLeader = room.Users[_random.Next(room.Users.Count)];
+                room.LeaderId = newLeader.Id;
+            }
+
+            // Si la sala queda vacía, eliminarla
+            if (!room.Users.Any())
+            {
+                _context.Rooms.Remove(room);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return user.Username; // ✅ devolvemos el username para mostrar en hub
+        }
+
+        // ✅ Obtener todas las salas activas
+        public async Task<List<RoomResponse>> GetActiveRoomsAsync()
+        {
+            return await _context.Rooms
+                .Include(r => r.Users)
+                .Select(r => new RoomResponse
+                {
+                    Code = r.Code,
+                    LeaderId = r.LeaderId,
+                    Users = r.Users.Select(u => u.Username).ToList()
+                }).ToListAsync();
+        }
+
+        // ✅ Obtener sala por código
+        public async Task<RoomResponse?> GetRoomByCodeAsync(string roomCode)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.Users)
+                .FirstOrDefaultAsync(r => r.Code == roomCode);
+
+            if (room == null) return null;
+
+            return new RoomResponse
+            {
+                Code = room.Code,
+                LeaderId = room.LeaderId,
+                Users = room.Users.Select(u => u.Username).ToList()
+            };
+        }
     }
 }

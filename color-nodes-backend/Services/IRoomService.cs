@@ -1,12 +1,13 @@
 ﻿using color_nodes_backend.DTOs;
 
-public interface IRoomService
+namespace color_nodes_backend.Services
 {
-    Task<RoomDto> CreateRoomAsync(int leaderId);
-    Task<RoomDto?> JoinRoomAsync(string code, int userId);
-    Task LeaveRoomAsync(string code, int userId);
-    Task<RoomDto?> GetRoomByCodeAsync(string code);
-    Task<RoomDto?> GetRoomByIdAsync(int roomId);
-    Task<List<RoomDto>> GetActiveRoomsAsync();
+    public interface IRoomService
+    {
+        Task<RoomResponse> CreateRoomAsync(string username);
+        Task<RoomResponse> JoinRoomAsync(string username, string roomCode);
+        Task<string> LeaveRoomAsync(int userId);
+        Task<List<RoomResponse>> GetActiveRoomsAsync();
+        Task<RoomResponse?> GetRoomByCodeAsync(string roomCode);
+    }
 }
-

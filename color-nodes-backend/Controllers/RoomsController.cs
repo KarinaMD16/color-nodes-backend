@@ -1,80 +1,54 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using color_nodes_backend.DTOs;
+using color_nodes_backend.Services;
+using Microsoft.AspNetCore.Mvc;
 
-[ApiController]
-[Route("api/[controller]")]
-public class RoomController : ControllerBase
+namespace color_nodes_backend.Controllers
 {
-    private readonly IRoomService _roomService;
-
-    public RoomController(IRoomService roomService)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class RoomController : ControllerBase
     {
-        _roomService = roomService;
-    }
+        private readonly IRoomService _roomService;
 
-    [HttpPost("create/{leaderId}")]
-    public async Task<IActionResult> CreateRoom(int leaderId)
-    {
-        try
+        public RoomController(IRoomService roomService)
         {
-            var room = await _roomService.CreateRoomAsync(leaderId);
+            _roomService = roomService;
+        }
+
+        [HttpPost("create")]
+        public async Task<ActionResult<RoomResponse>> CreateRoom([FromBody] CreateRoomDto request)
+        {
+            var result = await _roomService.CreateRoomAsync(request.Username);
+            return Ok(result);
+        }
+
+        [HttpPost("join")]
+        public async Task<ActionResult<RoomResponse>> JoinRoom([FromBody] JoinRoomDto request)
+        {
+            var result = await _roomService.JoinRoomAsync(request.Username, request.RoomCode);
+            return Ok(result);
+        }
+
+        [HttpPost("leave")]
+        public async Task<ActionResult<string>> LeaveRoom([FromBody] LeaveRoomDto request)
+        {
+            var username = await _roomService.LeaveRoomAsync(request.UserId);
+            return Ok($"{username} ha salido de la sala.");
+        }
+
+        [HttpGet("active")]
+        public async Task<ActionResult<List<RoomResponse>>> GetActiveRooms()
+        {
+            var rooms = await _roomService.GetActiveRoomsAsync();
+            return Ok(rooms);
+        }
+
+        [HttpGet("{code}")]
+        public async Task<ActionResult<RoomResponse>> GetRoomByCode(string code)
+        {
+            var room = await _roomService.GetRoomByCodeAsync(code);
+            if (room == null) return NotFound();
             return Ok(room);
         }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    [HttpPost("join/{code}/{userId}")]
-    public async Task<IActionResult> JoinRoom(string code, int userId)
-    {
-        try
-        {
-            var room = await _roomService.JoinRoomAsync(code, userId);
-            return Ok(room);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    // POST: api/room/leave/{code}/{userId}
-    [HttpPost("leave/{code}/{userId}")]
-    public async Task<IActionResult> LeaveRoom(string code, int userId)
-    {
-        try
-        {
-            await _roomService.LeaveRoomAsync(code, userId);
-            return Ok();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-
-    [HttpGet("{code}")]
-    public async Task<IActionResult> GetRoomByCode(string code)
-    {
-        var room = await _roomService.GetRoomByCodeAsync(code);
-        if (room == null) return NotFound(new { message = "Sala no encontrada." });
-        return Ok(room);
-    }
-
-    [HttpGet("active")]
-    public async Task<IActionResult> GetActiveRooms()
-    {
-        var rooms = await _roomService.GetActiveRoomsAsync();
-        return Ok(rooms);
     }
 }

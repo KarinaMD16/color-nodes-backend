@@ -2,19 +2,24 @@
 {
     public class CreateRoomDto
     {
-       public int LeaderId { get; set; }
-    }
-
-    public class RoomDto
-    {
-        public int Id { get; set; }
-        public string? Code { get; set; }
-        public int LeaderId { get; set; }
-        public List<int> UserIds { get; set; } = new();
+        public string Username { get; set; } = string.Empty;
     }
 
     public class JoinRoomDto
     {
-        public int UserId { get; set; }
+        public string RoomCode { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+    }
+
+    public class LeaveRoomDto
+    {
+        public int UserId { get; set; } 
+    }
+
+    public class RoomResponse
+    {
+        public string Code { get; set; } = null!;
+        public int LeaderId { get; set; }
+        public List<string> Users { get; set; } = new();
     }
 }
