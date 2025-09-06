@@ -16,8 +16,9 @@ namespace color_nodes_backend.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Code = table.Column<string>(type: "TEXT", maxLength: 10, nullable: true),
-                    LeaderId = table.Column<int>(type: "INTEGER", nullable: false)
+                    Code = table.Column<string>(type: "TEXT", nullable: true),
+                    LeaderId = table.Column<int>(type: "INTEGER", nullable: false),
+                    isActive = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -44,6 +45,12 @@ namespace color_nodes_backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Rooms_Code",
+                table: "Rooms",
+                column: "Code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_RoomId",

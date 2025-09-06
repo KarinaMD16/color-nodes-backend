@@ -6,8 +6,8 @@ namespace color_nodes_backend.Services
     {
         Task<RoomResponse> CreateRoomAsync(string username);
         Task<RoomResponse> JoinRoomAsync(string username, string roomCode);
-        Task<string> LeaveRoomAsync(int userId);
+        Task<string> LeaveRoomAsync(int userId, string roomCode);
         Task<List<RoomResponse>> GetActiveRoomsAsync();
-        Task<RoomResponse?> GetRoomByCodeAsync(string roomCode);
+        Task<ServiceResult<RoomResponse>> GetRoomByCodeAsync(string roomCode);
     }
 }

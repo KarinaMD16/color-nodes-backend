@@ -5,12 +5,6 @@
         public string Username { get; set; } = string.Empty;
     }
 
-    public class JoinRoomDto
-    {
-        public string RoomCode { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;
-    }
-
     public class LeaveRoomDto
     {
         public int UserId { get; set; } 
