@@ -22,17 +22,17 @@ namespace color_nodes_backend.Controllers
             return Ok(result);
         }
 
-        [HttpPost("join")]
-        public async Task<ActionResult<RoomResponse>> JoinRoom([FromBody] JoinRoomDto request)
+        [HttpPost("join/{username}/{room}")]
+        public async Task<ActionResult<RoomResponse>> JoinRoom([FromRoute] string username, string room)
         {
-            var result = await _roomService.JoinRoomAsync(request.Username, request.RoomCode);
+            var result = await _roomService.JoinRoomAsync(username, room);
             return Ok(result);
         }
 
-        [HttpPost("leave")]
-        public async Task<ActionResult<string>> LeaveRoom([FromBody] LeaveRoomDto request)
+        [HttpPost("leave/{code}")]
+        public async Task<ActionResult<string>> LeaveRoom([FromRoute] string code, [FromBody] LeaveRoomDto request)
         {
-            var username = await _roomService.LeaveRoomAsync(request.UserId);
+            var username = await _roomService.LeaveRoomAsync(request.UserId, code);
             return Ok($"{username} ha salido de la sala.");
         }
 
@@ -43,12 +43,15 @@ namespace color_nodes_backend.Controllers
             return Ok(rooms);
         }
 
-        [HttpGet("{code}")]
-        public async Task<ActionResult<RoomResponse>> GetRoomByCode(string code)
+        [HttpGet("by-code/{roomCode}")]
+        public async Task<IActionResult> GetRoomByCode(string roomCode)
         {
-            var room = await _roomService.GetRoomByCodeAsync(code);
-            if (room == null) return NotFound();
-            return Ok(room);
+            var result = await _roomService.GetRoomByCodeAsync(roomCode);
+
+            if (!result.Success)
+                return BadRequest(new { message = result.Message });
+
+            return Ok(result.Data);
         }
     }
 }

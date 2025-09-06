@@ -10,7 +10,7 @@ using color_nodes_backend.Data;
 namespace color_nodes_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250822181029_InitialCreate")]
+    [Migration("20250826233307_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -26,13 +26,18 @@ namespace color_nodes_backend.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Code")
-                        .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("LeaderId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("isActive")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
 
                     b.ToTable("Rooms");
                 });
