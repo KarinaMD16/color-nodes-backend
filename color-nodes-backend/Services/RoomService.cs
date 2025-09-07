@@ -45,7 +45,6 @@ namespace color_nodes_backend.Services
                 Users = room.Users.Select(u => u.Username).ToList()
             };
         }
-
         public async Task<RoomResponse> JoinRoomAsync(string username, string roomCode)
         {
             var room = await _context.Rooms
