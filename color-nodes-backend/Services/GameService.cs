@@ -211,7 +211,7 @@ namespace color_nodes_backend.Services
             "#F8FFE5",
             "#06D6A0",
             "#1B9AAA",
-            "#85718D",
+            "#7067CF",
             "#EF476F",
             "#FFC43D"
         };

@@ -37,7 +37,7 @@ namespace color_nodes_backend.Entities
 
             // control
         public int MovesThisTurn { get; set; } = 0;
-        public int MaxMovesPerTurn { get; set; } = 2;
+        public int MaxMovesPerTurn { get; set; } = 1;
         public int TurnDurationSeconds { get; set; } = 0; 
         public DateTime TurnEndsAtUtc { get; set; } = DateTime.MaxValue;
 
