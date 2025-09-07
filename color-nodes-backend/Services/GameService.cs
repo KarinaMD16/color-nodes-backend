@@ -113,44 +113,43 @@ namespace color_nodes_backend.Services
         public GameResult ApplySwap(Guid gameId, int playerId, int fromIndex, int toIndex)
         {
             var g = _db.Games.FirstOrDefault(x => x.Id == gameId)
-                ?? throw new KeyNotFoundException("Partida no encontrada");
+                ?? throw new KeyNotFoundException("Game no encontrado");
 
-            var beforeHits = g.LastHits;
             var beforePlayer = g.CurrentPlayerId;
 
-            EnsureTurnFreshInTx(g); // timer >:
+            EnsureTurnFreshInTx(g);
 
             if (g.Status != GameStatus.InProgress)
-            {
-                throw new InvalidOperationException("La partida no está en progreso. Ya no puedes hacer eso.");
-            }
+                throw new InvalidOperationException("La partida no está en progreso.");
 
             if (playerId != (g.CurrentPlayerId ?? -1))
-            {
-                throw new UnauthorizedAccessException("¡No es tu turno! Espera a que el jugador actual termine su turno o se le acabe el tiempo. ");
-            }
+                throw new UnauthorizedAccessException("No es tu turno.");
 
+            // si tienes timer activo, respétalo
             if (g.TurnDurationSeconds > 0 && DateTime.UtcNow > g.TurnEndsAtUtc)
             {
                 AdvanceTurn(g);
                 _db.SaveChanges();
-                return new GameResult(g, HitMessage: null, TurnChanged: g.CurrentPlayerId != beforePlayer);
+                // siempre devolvemos el hit actual como texto
+                var hitMsgTimeout = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
+                return new GameResult(g, hitMsgTimeout, TurnChanged: g.CurrentPlayerId != beforePlayer);
             }
 
             if (g.MovesThisTurn >= g.MaxMovesPerTurn)
-            {
                 throw new InvalidOperationException("Límite de movimientos alcanzado en este turno.");
-            }
 
             if (!IsValidIndex(fromIndex) || !IsValidIndex(toIndex))
-            {
-                throw new ArgumentOutOfRangeException("Índices fuera de rango.");
-            }
+                throw new ArgumentOutOfRangeException("Índices fuera de rango (0..5).");
 
-            // swap
-            (g.Cups[fromIndex], g.Cups[toIndex]) = (g.Cups[toIndex], g.Cups[fromIndex]);
+            if (fromIndex == toIndex)
+                throw new ArgumentException("fromIndex y toIndex no pueden ser iguales.");
 
-            g.MovesThisTurn++; 
+            // === SWAP con reasignación (para que EF detecte el cambio) ===
+            var cups = g.Cups.ToList();                // copia
+            (cups[fromIndex], cups[toIndex]) = (cups[toIndex], cups[fromIndex]);
+            g.Cups = cups;                              // ← clave: reasignar nueva instancia
+
+            g.MovesThisTurn++;
             g.TotalMoves++;
             g.LastHits = CountHits(g.Cups, g.TargetPattern);
             g.UpdatedAtUtc = DateTime.UtcNow;
@@ -167,20 +166,21 @@ namespace color_nodes_backend.Services
             if (g.IsFinished)
             {
                 g.Status = GameStatus.Finished;
-            } else if (g.MovesThisTurn >= g.MaxMovesPerTurn) {
+            }
+            else if (g.MovesThisTurn >= g.MaxMovesPerTurn)
+            {
                 AdvanceTurn(g);
             }
 
             _db.SaveChanges();
 
-            string hitMsg = g.LastHits == 1
-                                        ? "1 acierto"
-                                        : $"{g.LastHits} aciertos";
-            // ? 
-            bool turnChanged = g.Status == GameStatus.Finished || g.MovesThisTurn == 0;
+            // SIEMPRE devolver el estado de aciertos actual
+            string hitMsg = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
+            bool turnChanged = g.CurrentPlayerId != beforePlayer || g.Status == GameStatus.Finished;
 
             return new GameResult(g, hitMsg, turnChanged);
         }
+
 
 
         public Game EnsureTurnFresh(Guid gameId)
