@@ -125,12 +125,11 @@ namespace color_nodes_backend.Services
             if (playerId != (g.CurrentPlayerId ?? -1))
                 throw new UnauthorizedAccessException("No es tu turno.");
 
-            // si tienes timer activo, respétalo
             if (g.TurnDurationSeconds > 0 && DateTime.UtcNow > g.TurnEndsAtUtc)
             {
                 AdvanceTurn(g);
                 _db.SaveChanges();
-                // siempre devolvemos el hit actual como texto
+                // hit actual
                 var hitMsgTimeout = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
                 return new GameResult(g, hitMsgTimeout, TurnChanged: g.CurrentPlayerId != beforePlayer);
             }
@@ -144,10 +143,10 @@ namespace color_nodes_backend.Services
             if (fromIndex == toIndex)
                 throw new ArgumentException("fromIndex y toIndex no pueden ser iguales.");
 
-            // === SWAP con reasignación (para que EF detecte el cambio) ===
-            var cups = g.Cups.ToList();                // copia
+            // === SWAP ===
+            var cups = g.Cups.ToList(); 
             (cups[fromIndex], cups[toIndex]) = (cups[toIndex], cups[fromIndex]);
-            g.Cups = cups;                              // ← clave: reasignar nueva instancia
+            g.Cups = cups;                              // reasignar nueva instancia
 
             g.MovesThisTurn++;
             g.TotalMoves++;
@@ -174,7 +173,7 @@ namespace color_nodes_backend.Services
 
             _db.SaveChanges();
 
-            // SIEMPRE devolver el estado de aciertos actual
+            //  estado de aciertos actual
             string hitMsg = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
             bool turnChanged = g.CurrentPlayerId != beforePlayer || g.Status == GameStatus.Finished;
 
@@ -200,6 +199,11 @@ namespace color_nodes_backend.Services
 
             return g;
         }
+
+
+
+
+
 
         // ---------- Helpers ----------
         private static readonly List<string> PredefinedPalette = new()
