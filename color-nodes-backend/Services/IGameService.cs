@@ -13,5 +13,7 @@ namespace color_nodes_backend.Services
         // forzar cambio de turno 
         Game EnsureTurnFresh(Guid gameId);
         Game GetState(Guid gameId);
+
+        IReadOnlyList<string> GetPalette();
     }
 }

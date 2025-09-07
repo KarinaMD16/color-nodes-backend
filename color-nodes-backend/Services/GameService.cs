@@ -260,5 +260,7 @@ namespace color_nodes_backend.Services
             if (g.PlayerOrder.Count == 0) return 0;
             return (g.CurrentPlayerIndex + 1) % g.PlayerOrder.Count;
         }
+
+        public IReadOnlyList<string> GetPalette() => PredefinedPalette.AsReadOnly();
     }
 }

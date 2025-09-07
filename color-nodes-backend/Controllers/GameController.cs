@@ -81,7 +81,8 @@ namespace color_nodes_backend.Controllers
             g.CurrentPlayerId,
             g.PlayerOrder,
             g.TurnEndsAtUtc,
-            g.Status == GameStatus.Finished ? g.TargetPattern : null
+            g.Status == GameStatus.Finished ? g.TargetPattern : null,
+            AvailableColors: _games.GetPalette()
         );
 
         // signal R / hub notifs

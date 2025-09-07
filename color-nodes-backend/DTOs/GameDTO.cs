@@ -16,7 +16,8 @@ namespace color_nodes_backend.Contracts
        int? CurrentPlayerId,
        List<int> PlayerOrder,
        DateTime TurnEndsAtUtc,
-       List<string>? TargetPattern 
+       List<string>? TargetPattern,
+       IReadOnlyList<string> AvailableColors
    );
     public record GameResult(
         Game Game,
