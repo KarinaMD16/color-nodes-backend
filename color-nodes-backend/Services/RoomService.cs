@@ -42,7 +42,7 @@ namespace color_nodes_backend.Services
             {
                 Code = room.Code,
                 LeaderId = room.LeaderId,
-                Users = room.Users.Select(u => u.Username).ToList()
+                Users = room.Users.ToList()
             };
         }
         public async Task<RoomResponse> JoinRoomAsync(string username, string roomCode)
@@ -70,7 +70,7 @@ namespace color_nodes_backend.Services
             {
                 Code = room.Code,
                 LeaderId = room.LeaderId,
-                Users = room.Users.Select(u => u.Username).ToList()
+                Users = room.Users.ToList()
             };
         }
 
@@ -115,7 +115,7 @@ namespace color_nodes_backend.Services
                 {
                     Code = r.Code,
                     LeaderId = r.LeaderId,
-                    Users = r.Users.Select(u => u.Username).ToList()
+                    Users = r.Users.ToList()
                 }).ToListAsync();
         }
 
@@ -146,7 +146,7 @@ namespace color_nodes_backend.Services
                 {
                     Code = room.Code,
                     LeaderId = room.LeaderId,
-                    Users = room.Users.Select(u => u.Username).ToList()
+                    Users = room.Users.ToList()
                 }
             };
         }
