@@ -1,4 +1,6 @@
-﻿namespace color_nodes_backend.DTOs
+﻿using color_nodes_backend.Entities;
+
+namespace color_nodes_backend.DTOs
 {
     public class CreateRoomDto
     {
@@ -14,6 +16,6 @@
     {
         public string Code { get; set; } = null!;
         public int LeaderId { get; set; }
-        public List<string> Users { get; set; } = new();
+        public List<User> Users { get; set; } = new();
     }
 }
