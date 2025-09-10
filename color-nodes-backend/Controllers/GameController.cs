@@ -88,22 +88,32 @@ namespace color_nodes_backend.Controllers
         // signal R / hub notifs
         private void BroadcastState(Game g, string? hitMessage, bool turnChanged)
         {
-            var group = $"room:{g.RoomCode}";
-            _hub.Clients.Group(group).SendAsync("stateUpdated", ToResponse(g));
+            var roomGroup = $"room:{g.RoomCode}";
+            var gameGroup = $"game:{g.Id}";  
 
-            if (!string.IsNullOrWhiteSpace(hitMessage))                 // notificar aciertos 
-            { 
-                _hub.Clients.Group(group).SendAsync("hitFeedback", new { message = hitMessage });
+     
+            _hub.Clients.Group(roomGroup).SendAsync("stateUpdated", ToResponse(g));
+            _hub.Clients.Group(gameGroup).SendAsync("stateUpdated", ToResponse(g));
+
+            if (!string.IsNullOrWhiteSpace(hitMessage))
+            {
+                _hub.Clients.Group(roomGroup).SendAsync("hitFeedback", new { message = hitMessage });
+                _hub.Clients.Group(gameGroup).SendAsync("hitFeedback", new { message = hitMessage });
             }
 
-            if (turnChanged)                                            // notificar cambio de turno
+            if (turnChanged)
             {
-                _hub.Clients.Group(group).SendAsync("turnChanged", 
+                _hub.Clients.Group(roomGroup).SendAsync("turnChanged",
+                    new { currentPlayerId = g.CurrentPlayerId, turnEndsAtUtc = g.TurnEndsAtUtc });
+                _hub.Clients.Group(gameGroup).SendAsync("turnChanged",
                     new { currentPlayerId = g.CurrentPlayerId, turnEndsAtUtc = g.TurnEndsAtUtc });
             }
-            if (g.Status == GameStatus.Finished)                        // fin de partida
+
+            if (g.Status == GameStatus.Finished)
             {
-                _hub.Clients.Group(group).SendAsync("finished", 
+                _hub.Clients.Group(roomGroup).SendAsync("finished",
+                    new { gameId = g.Id, totalMoves = g.TotalMoves });
+                _hub.Clients.Group(gameGroup).SendAsync("finished",
                     new { gameId = g.Id, totalMoves = g.TotalMoves });
             }
         }
