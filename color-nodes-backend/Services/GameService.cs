@@ -52,7 +52,7 @@ namespace color_nodes_backend.Services
                 PlayerOrder = order,
                 CurrentPlayerIndex = 0,
                 MovesThisTurn = 0,
-                MaxMovesPerTurn = 2,
+                MaxMovesPerTurn = 1,
                 TurnDurationSeconds = 0,
                 TurnEndsAtUtc = DateTime.MaxValue,
                 LastHits = 0,
