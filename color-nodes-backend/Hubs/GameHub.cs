@@ -4,6 +4,7 @@ namespace color_nodes_backend.Hubs
 {
     public class GameHub : Hub<IGameClient>
     {
+      
         public async Task JoinRoom(string roomCode, string username)
         {
             var group = $"room:{roomCode}";

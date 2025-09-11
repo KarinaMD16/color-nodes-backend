@@ -15,66 +15,95 @@ namespace color_nodes_backend.Controllers
         {
             _games = games;
         }
-
-        [HttpPost("start")]
-        public async Task<ActionResult<GameStateResponse>> Start(
-            [FromBody] StartGameRequest req,
-            CancellationToken ct)
+        // inicaiar partida
+        [HttpPost("start")] 
+        public ActionResult<GameStateResponse> Start([FromBody] StartGameRequest req)
         {
-            var g = await _games.StartGameForRoom(req.RoomCode, ct);
+            var g = _games.StartGameForRoom(req.RoomCode);
+            BroadcastState(g, hitMessage: null, turnChanged: true);
             return Ok(ToResponse(g));
         }
 
-        // Fase inicial: colocar los 6 vasos
+        // primero - colocar vasos
         [HttpPost("{id:guid}/place-initial")]
-        public async Task<ActionResult<GameStateResponse>> PlaceInitial(
-            Guid id,
-            [FromBody] PlaceInitialCupsRequest req,
-            CancellationToken ct)
+        public async Task<ActionResult<GameStateResponse>> PlaceInitial(Guid id, [FromBody] PlaceInitialCupsRequest req)
         {
-            var res = await _games.PlaceInitialCups(id, req.PlayerId, req.Cups, ct);
+            var res = _games.PlaceInitialCups(id, req.PlayerId, req.Cups);
+            await BroadcastStateAsync(res.Game, res.HitMessage, res.TurnChanged);
             return Ok(ToResponse(res.Game));
         }
 
         // juego
         [HttpPost("{id:guid}/swap")]
-        public async Task<ActionResult<GameStateResponse>> Swap(
-            Guid id,
-            [FromBody] SwapRequest req,
-            CancellationToken ct)
+        public async Task<ActionResult<GameStateResponse>> Swap(Guid id, [FromBody] SwapRequest req)
         {
-            var res = await _games.ApplySwap(id, req.PlayerId, req.FromIndex, req.ToIndex, ct);
+            var res = _games.ApplySwap(id, req.PlayerId, req.FromIndex, req.ToIndex);
+            await BroadcastStateAsync(res.Game, res.HitMessage, res.TurnChanged);
             return Ok(ToResponse(res.Game));
         }
 
         [HttpPost("{id:guid}/tick")]
-        public async Task<ActionResult<GameStateResponse>> Tick(
-            Guid id,
-            CancellationToken ct)
+        public async Task<ActionResult<GameStateResponse>> Tick(Guid id)
         {
-            var g = await _games.EnsureTurnFresh(id, ct);
+            var before = _games.GetState(id);
+            var g = _games.EnsureTurnFresh(id);
+
+            var turnChanged = (g.CurrentPlayerId != before.CurrentPlayerId);
+            if (turnChanged)
+            {
+                await BroadcastStateAsync(g, hitMessage: null, turnChanged: true);
+            }
             return Ok(ToResponse(g));
         }
 
         [HttpGet("{id:guid}")]
-        public async Task<ActionResult<GameStateResponse>> Get(Guid id, CancellationToken ct)
+        public ActionResult<GameStateResponse> Get(Guid id)
         {
-            var g = await _games.GetState(id, ct);
+            var g = _games.GetState(id);
             return Ok(ToResponse(g));
         }
         private GameStateResponse ToResponse(Game g) =>
-            new(
-                GameId: g.Id,
-                RoomCode: g.RoomCode,
-                Status: g.Status.ToString(),
-                Cups: g.Cups,
-                Hits: g.LastHits,
-                TotalMoves: g.TotalMoves,
-                CurrentPlayerId: g.CurrentPlayerId,
-                PlayerOrder: g.PlayerOrder,
-                TurnEndsAtUtc: g.TurnEndsAtUtc,
-                TargetPattern: g.Status == GameStatus.Finished ? g.TargetPattern : null,
-                AvailableColors: _games.GetPalette()
-            );
+        new(
+            g.Id,
+            g.RoomCode,
+            g.Status.ToString(),
+            g.Cups,
+            g.LastHits,
+            g.TotalMoves,
+            g.CurrentPlayerId,
+            g.PlayerOrder,
+            g.TurnEndsAtUtc,
+            g.Status == GameStatus.Finished ? g.TargetPattern : null,
+            AvailableColors: _games.GetPalette()
+        );
+
+        // signal R / hub notifs
+        private void BroadcastState(Game g, string? hitMessage, bool turnChanged)
+        {
+            var group = $"room:{g.RoomCode}";
+            _hub.Clients.Group(group).SendAsync("stateUpdated", ToResponse(g));
+
+            if (!string.IsNullOrWhiteSpace(hitMessage))                 // notificar aciertos 
+            { 
+                _hub.Clients.Group(group).SendAsync("hitFeedback", new { message = hitMessage });
+            }
+
+            if (turnChanged)                                            // notificar cambio de turno
+            {
+                _hub.Clients.Group(group).SendAsync("turnChanged", 
+                    new { currentPlayerId = g.CurrentPlayerId, turnEndsAtUtc = g.TurnEndsAtUtc });
+            }
+            if (g.Status == GameStatus.Finished)                        // fin de partida
+            {
+                _hub.Clients.Group(group).SendAsync("finished", 
+                    new { gameId = g.Id, totalMoves = g.TotalMoves });
+            }
+        }
+
+        private Task BroadcastStateAsync(Game g, string? hitMessage, bool turnChanged)
+        {
+            BroadcastState(g, hitMessage, turnChanged);
+            return Task.CompletedTask;
+        }
     }
 }
