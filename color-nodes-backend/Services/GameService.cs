@@ -1,28 +1,34 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using color_nodes_backend.Contracts;
 using color_nodes_backend.Data;
 using color_nodes_backend.Entities;
-using color_nodes_backend.Contracts;
+using color_nodes_backend.Hubs;
 
 namespace color_nodes_backend.Services
 {
     public class GameService : IGameService
     {
         private readonly AppDbContext _db;
+        private readonly IHubContext<GameHub, IGameClient> _hub;
         private readonly Random _rnd = new();
 
-        public GameService(AppDbContext db) { _db = db; }
-
-        public Game StartGameForRoom(string roomCode)
+        public GameService(AppDbContext db, IHubContext<GameHub, IGameClient> hub)
+        {
+            _db = db;
+            _hub = hub;
+        }
+        public async Task<Game> StartGameForRoom(string roomCode, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(roomCode))
                 throw new ArgumentException("roomCode requerido", nameof(roomCode));
 
-            var room = _db.Rooms
+            var room = await _db.Rooms
                 .Include(r => r.Users)
-                .FirstOrDefault(r => r.Code == roomCode)
+                .FirstOrDefaultAsync(r => r.Code == roomCode, ct)
                 ?? throw new InvalidOperationException("Sala no encontrada");
 
-            //  random p turn
+            // orden de turnos aleatorio
             var order = room.Users
                 .OrderBy(_ => _rnd.Next())
                 .Select(u => u.Id)
@@ -34,12 +40,12 @@ namespace color_nodes_backend.Services
             }
 
             if (order.Count == 0)
-            { 
-                throw new InvalidOperationException("No hay jugadores para iniciar."); 
+            {
+                throw new InvalidOperationException("No hay jugadores para iniciar.");
             }
 
             var target = PredefinedPalette
-                .OrderBy(_ => _rnd.Next()) // random target colrs
+                .OrderBy(_ => _rnd.Next())
                 .Take(6)
                 .ToList();
 
@@ -53,7 +59,7 @@ namespace color_nodes_backend.Services
                 CurrentPlayerIndex = 0,
                 MovesThisTurn = 0,
                 MaxMovesPerTurn = 1,
-                TurnDurationSeconds = 0,
+                TurnDurationSeconds = 0,                 // 0 = sin límite (modo pruebas)
                 TurnEndsAtUtc = DateTime.MaxValue,
                 LastHits = 0,
                 TotalMoves = 0,
@@ -62,57 +68,64 @@ namespace color_nodes_backend.Services
             };
 
             _db.Games.Add(game);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync(ct);
+
+            // signalR
+            var state = ToResponse(game);
+            await _hub.Clients.Group($"room:{roomCode}").StateUpdated(state);
+            await _hub.Clients.Group($"game:{game.Id}").StateUpdated(state);
+
             return game;
         }
 
-        public GameResult PlaceInitialCups(Guid gameId, int playerId, List<string> cups)
+        public async Task<GameResult> PlaceInitialCups(Guid gameId, int playerId, List<string> cups, CancellationToken ct = default)
         {
-            var g = _db.Games.FirstOrDefault(x => x.Id == gameId)
+            var g = await _db.Games.FirstOrDefaultAsync(x => x.Id == gameId, ct)
                 ?? throw new KeyNotFoundException("Partida no encontrada.");
 
-            var beforeHits = g.LastHits;
             var beforePlayer = g.CurrentPlayerId;
 
-            EnsureTurnFreshInTx(g); // timer !!!!!
+            EnsureTurnFreshInTx(g); // avance por tiempo si aplica
 
             if (g.Status != GameStatus.Setup)
-            {
-                throw new InvalidOperationException("La partida no está en estado de Setup. Ya no puedes hacer eso. ");
-            }
+                throw new InvalidOperationException("La partida no está en estado de Setup.");
 
             if (playerId != (g.CurrentPlayerId ?? -1))
-            {
-                throw new UnauthorizedAccessException("¡No es tu turno! Espera a que el jugador actual termine su turno o se le acabe el tiempo. ");
-            }
+                throw new UnauthorizedAccessException("¡No es tu turno!");
 
             if (cups is null || cups.Count != 6)
-            {
-                throw new ArgumentException("Debes colocar exactamente 6 vasos para poder continuar.");
-            }
+                throw new ArgumentException("Debes colocar exactamente 6 vasos.");
 
             g.Cups = new List<string>(cups);
-            g.LastHits = CountHits(g.Cups, g.TargetPattern); // calc aciertos 
+            g.LastHits = CountHits(g.Cups, g.TargetPattern);
 
-            // avanzar
             AdvanceTurn(g, consumeWholeTurn: true);
             g.Status = GameStatus.InProgress;
             g.UpdatedAtUtc = DateTime.UtcNow;
 
-            _db.SaveChanges();
+            await _db.SaveChangesAsync(ct);
 
-            string hitMsg = g.LastHits == 1
-                                        ? "1 acierto"
-                                        : $"{g.LastHits} aciertos";
-            // ? 
-            bool turnChanged = g.Status == GameStatus.Finished || g.MovesThisTurn == 0;
+            var hitMsg = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
+            var turnChanged = g.Status == GameStatus.Finished ||
+                              g.CurrentPlayerId != beforePlayer ||
+                              g.MovesThisTurn == 0;
+
+            // Emitir eventos SignalR
+            var state = ToResponse(g);
+            var grp = $"game:{g.Id}";
+            await _hub.Clients.Group(grp).StateUpdated(state);
+            await _hub.Clients.Group(grp).HitFeedback(hitMsg);
+            if (turnChanged)
+                await _hub.Clients.Group(grp).TurnChanged(g.CurrentPlayerId ?? 0);
+            if (state.Status == "Finished")
+                await _hub.Clients.Group(grp).Finished(state);
 
             return new GameResult(g, hitMsg, turnChanged);
         }
 
-        public GameResult ApplySwap(Guid gameId, int playerId, int fromIndex, int toIndex)
+        public async Task<GameResult> ApplySwap(Guid gameId, int playerId, int fromIndex, int toIndex, CancellationToken ct = default)
         {
-            var g = _db.Games.FirstOrDefault(x => x.Id == gameId)
+            var g = await _db.Games.FirstOrDefaultAsync(x => x.Id == gameId, ct)
                 ?? throw new KeyNotFoundException("Game no encontrado");
 
             var beforePlayer = g.CurrentPlayerId;
@@ -128,10 +141,19 @@ namespace color_nodes_backend.Services
             if (g.TurnDurationSeconds > 0 && DateTime.UtcNow > g.TurnEndsAtUtc)
             {
                 AdvanceTurn(g);
-                _db.SaveChanges();
-                // hit actual
-                var hitMsgTimeout = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
-                return new GameResult(g, hitMsgTimeout, TurnChanged: g.CurrentPlayerId != beforePlayer);
+                await _db.SaveChangesAsync(ct);
+
+                var dtoTimeout = ToResponse(g);
+                var grpTimeout = $"game:{g.Id}";
+                var msgTimeout = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
+
+                await _hub.Clients.Group(grpTimeout).StateUpdated(dtoTimeout);
+                await _hub.Clients.Group(grpTimeout).HitFeedback(msgTimeout);
+                await _hub.Clients.Group(grpTimeout).TurnChanged(g.CurrentPlayerId ?? 0);
+                if (dtoTimeout.Status == "Finished")
+                    await _hub.Clients.Group(grpTimeout).Finished(dtoTimeout);
+
+                return new GameResult(g, msgTimeout, TurnChanged: g.CurrentPlayerId != beforePlayer);
             }
 
             if (g.MovesThisTurn >= g.MaxMovesPerTurn)
@@ -144,9 +166,9 @@ namespace color_nodes_backend.Services
                 throw new ArgumentException("fromIndex y toIndex no pueden ser iguales.");
 
             // === SWAP ===
-            var cups = g.Cups.ToList(); 
+            var cups = g.Cups.ToList();
             (cups[fromIndex], cups[toIndex]) = (cups[toIndex], cups[fromIndex]);
-            g.Cups = cups;                              // reasignar nueva instancia
+            g.Cups = cups; // reasignar nueva instancia para EF
 
             g.MovesThisTurn++;
             g.TotalMoves++;
@@ -171,52 +193,65 @@ namespace color_nodes_backend.Services
                 AdvanceTurn(g);
             }
 
-            _db.SaveChanges();
+            await _db.SaveChangesAsync(ct);
 
-            //  estado de aciertos actual
-            string hitMsg = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
-            bool turnChanged = g.CurrentPlayerId != beforePlayer || g.Status == GameStatus.Finished;
+            // Emitir estado de aciertos y cambios
+            var hitMsg = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
+            var turnChanged = g.CurrentPlayerId != beforePlayer || g.Status == GameStatus.Finished;
+
+            var dto = ToResponse(g);
+            var grp = $"game:{g.Id}";
+            await _hub.Clients.Group(grp).StateUpdated(dto);
+            await _hub.Clients.Group(grp).HitFeedback(hitMsg);
+            if (turnChanged)
+                await _hub.Clients.Group(grp).TurnChanged(g.CurrentPlayerId ?? 0);
+            if (dto.Status == "Finished")
+                await _hub.Clients.Group(grp).Finished(dto);
 
             return new GameResult(g, hitMsg, turnChanged);
         }
 
-
-
-        public Game EnsureTurnFresh(Guid gameId)
+        public async Task<Game> EnsureTurnFresh(Guid gameId, CancellationToken ct = default)
         {
-            var g = _db.Games.FirstOrDefault(x => x.Id == gameId)
+            var g = await _db.Games.FirstOrDefaultAsync(x => x.Id == gameId, ct)
                 ?? throw new KeyNotFoundException("Partida no encontrada");
 
+            var before = g.CurrentPlayerId;
             EnsureTurnFreshInTx(g);
-            _db.SaveChanges();
+            var changed = before != g.CurrentPlayerId;
+
+            await _db.SaveChangesAsync(ct);
+
+            // Si cambió por timeout, avisamos a todos
+            if (changed)
+            {
+                var state = ToResponse(g);
+                var grp = $"game:{g.Id}";
+                await _hub.Clients.Group(grp).StateUpdated(state);
+                await _hub.Clients.Group(grp).TurnChanged(g.CurrentPlayerId ?? 0);
+            }
+
             return g;
         }
 
-        public Game GetState(Guid gameId)
+        public async Task<Game> GetState(Guid gameId, CancellationToken ct = default)
         {
-            var g = _db.Games.AsNoTracking().FirstOrDefault(x => x.Id == gameId)
+            var g = await _db.Games.AsNoTracking().FirstOrDefaultAsync(x => x.Id == gameId, ct)
                 ?? throw new KeyNotFoundException("Partida no encontrada");
 
             return g;
         }
 
+        public IReadOnlyList<string> GetPalette() => PredefinedPalette.AsReadOnly();
 
+        // ================== HELPERS ==================
 
-
-
-
-        // ---------- Helpers ----------
         private static readonly List<string> PredefinedPalette = new()
         {
-            "#F8FFE5",
-            "#06D6A0",
-            "#1B9AAA",
-            "#7067CF",
-            "#EF476F",
-            "#FFC43D"
+            "#F8FFE5", "#06D6A0", "#1B9AAA", "#7067CF", "#EF476F", "#FFC43D"
         };
 
-        private static int CountHits(IReadOnlyList<string> cups, IReadOnlyList<string> target) // aciertos
+        private static int CountHits(IReadOnlyList<string> cups, IReadOnlyList<string> target)
         {
             var n = Math.Min(cups.Count, target.Count);
             var hits = 0;
@@ -243,14 +278,13 @@ namespace color_nodes_backend.Services
             if (g.Status == GameStatus.Finished) return;
 
             g.MovesThisTurn = 0;
-
             g.CurrentPlayerIndex = NextIndex(g);
 
             // reloj del siguiente turno:
             if (g.TurnDurationSeconds > 0)
                 g.TurnEndsAtUtc = DateTime.UtcNow.AddSeconds(g.TurnDurationSeconds);
             else
-                g.TurnEndsAtUtc = DateTime.MaxValue; // sin límite (modo pruebas)
+                g.TurnEndsAtUtc = DateTime.MaxValue;
 
             g.UpdatedAtUtc = DateTime.UtcNow;
         }
@@ -261,6 +295,19 @@ namespace color_nodes_backend.Services
             return (g.CurrentPlayerIndex + 1) % g.PlayerOrder.Count;
         }
 
-        public IReadOnlyList<string> GetPalette() => PredefinedPalette.AsReadOnly();
+        // Mapeo único hacia el contrato del frontend
+        private GameStateResponse ToResponse(Game g) => new(
+            GameId: g.Id,
+            RoomCode: g.RoomCode,
+            Status: g.Status.ToString(),
+            Cups: g.Cups?.ToList() ?? new(),
+            Hits: g.LastHits,
+            TotalMoves: g.TotalMoves,
+            CurrentPlayerId: g.CurrentPlayerId,
+            PlayerOrder: g.PlayerOrder?.ToList() ?? new(),
+            TurnEndsAtUtc: g.TurnEndsAtUtc,
+            TargetPattern: g.TargetPattern?.ToList(),
+            AvailableColors: PredefinedPalette
+        );
     }
 }
