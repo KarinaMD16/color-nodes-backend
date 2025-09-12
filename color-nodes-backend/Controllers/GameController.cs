@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using color_nodes_backend.Contracts;
 using color_nodes_backend.Entities;
 using color_nodes_backend.Services;
-using color_nodes_backend.Hubs;
 
 namespace color_nodes_backend.Controllers
 {
@@ -12,12 +10,10 @@ namespace color_nodes_backend.Controllers
     public class GameController : ControllerBase
     {
         private readonly IGameService _games;
-        private readonly IHubContext<GameHub> _hub;
 
-        public GameController(IGameService games, IHubContext<GameHub> hub)
+        public GameController(IGameService games)
         {
             _games = games;
-            _hub = hub;
         }
         // inicaiar partida
         [HttpPost("start")] 
@@ -46,7 +42,6 @@ namespace color_nodes_backend.Controllers
             return Ok(ToResponse(res.Game));
         }
 
-        // timeout 
         [HttpPost("{id:guid}/tick")]
         public async Task<ActionResult<GameStateResponse>> Tick(Guid id)
         {
@@ -61,15 +56,12 @@ namespace color_nodes_backend.Controllers
             return Ok(ToResponse(g));
         }
 
-        // get partida
         [HttpGet("{id:guid}")]
         public ActionResult<GameStateResponse> Get(Guid id)
         {
             var g = _games.GetState(id);
             return Ok(ToResponse(g));
         }
-
-        // ?
         private GameStateResponse ToResponse(Game g) =>
         new(
             g.Id,
@@ -88,32 +80,22 @@ namespace color_nodes_backend.Controllers
         // signal R / hub notifs
         private void BroadcastState(Game g, string? hitMessage, bool turnChanged)
         {
-            var roomGroup = $"room:{g.RoomCode}";
-            var gameGroup = $"game:{g.Id}";  
+            var group = $"room:{g.RoomCode}";
+            _hub.Clients.Group(group).SendAsync("stateUpdated", ToResponse(g));
 
-     
-            _hub.Clients.Group(roomGroup).SendAsync("stateUpdated", ToResponse(g));
-            _hub.Clients.Group(gameGroup).SendAsync("stateUpdated", ToResponse(g));
-
-            if (!string.IsNullOrWhiteSpace(hitMessage))
-            {
-                _hub.Clients.Group(roomGroup).SendAsync("hitFeedback", new { message = hitMessage });
-                _hub.Clients.Group(gameGroup).SendAsync("hitFeedback", new { message = hitMessage });
+            if (!string.IsNullOrWhiteSpace(hitMessage))                 // notificar aciertos 
+            { 
+                _hub.Clients.Group(group).SendAsync("hitFeedback", new { message = hitMessage });
             }
 
-            if (turnChanged)
+            if (turnChanged)                                            // notificar cambio de turno
             {
-                _hub.Clients.Group(roomGroup).SendAsync("turnChanged",
-                    new { currentPlayerId = g.CurrentPlayerId, turnEndsAtUtc = g.TurnEndsAtUtc });
-                _hub.Clients.Group(gameGroup).SendAsync("turnChanged",
+                _hub.Clients.Group(group).SendAsync("turnChanged", 
                     new { currentPlayerId = g.CurrentPlayerId, turnEndsAtUtc = g.TurnEndsAtUtc });
             }
-
-            if (g.Status == GameStatus.Finished)
+            if (g.Status == GameStatus.Finished)                        // fin de partida
             {
-                _hub.Clients.Group(roomGroup).SendAsync("finished",
-                    new { gameId = g.Id, totalMoves = g.TotalMoves });
-                _hub.Clients.Group(gameGroup).SendAsync("finished",
+                _hub.Clients.Group(group).SendAsync("finished", 
                     new { gameId = g.Id, totalMoves = g.TotalMoves });
             }
         }

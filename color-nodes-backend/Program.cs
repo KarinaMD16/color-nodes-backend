@@ -5,51 +5,58 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=colornodes.db"));
+// DB
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseSqlite("Data Source=colornodes.db"));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// SignalR
 builder.Services.AddSignalR();
 
+// Servicios
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IGameService, GameService>();
 
-builder.Services.AddCors(options =>
+// CORS
+var MyCors = "_myCors";
+builder.Services.AddCors(opt =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins(
-                "http://localhost:3174",
-                "http://localhost:5173",
-                "https://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://127.0.0.1:3174"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
+    opt.AddPolicy(MyCors, p => p
+        .WithOrigins(
+            "http://localhost:3174",          // front local
+            "http://26.233.244.31:3174"       // front abierto por tu IP Radmin
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()
+    );
 });
 
 var app = builder.Build();
 
+// Swagger solo en dev
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowFrontend");
+// Usa la MISMA política que definiste arriba
+app.UseCors(MyCors);
 
-app.UseHttpsRedirection();
+// ?? Trabajando en HTTP ? quita la redirección a HTTPS
+// app.UseHttpsRedirection();
+
 app.UseAuthorization();
 
-app.MapControllers();
+// Opcional: endpoint de salud para probar conectividad
+app.MapGet("/health", () => "OK");
 
-app.MapHub<GameHub>("/gameHub");
+app.MapControllers();
+app.MapHub<GameHub>("/gameHub"); // puedes añadir .RequireCors(MyCors) si quieres
 
 app.Run();

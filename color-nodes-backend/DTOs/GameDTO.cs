@@ -24,4 +24,16 @@ namespace color_nodes_backend.Contracts
         string? HitMessage,   // null si no cambió el número de aciertos
         bool TurnChanged      // true si cambió el jugador o terminó
     );
+    public class GameDto
+    {
+        public string GameId { get; set; } = "";
+        public string RoomCode { get; set; } = "";
+        public string Status { get; set; } = "";
+        public int CurrentPlayerId { get; set; }
+        public int TotalMoves { get; set; }
+        public int Hits { get; set; }
+        public List<string> Cups { get; set; } = new();
+        public List<string> TargetPattern { get; set; } = new();
+        public List<string> AvailableColors { get; set; } = new();
+    }
 }

@@ -5,15 +5,11 @@ namespace color_nodes_backend.Services
 {
     public interface IGameService
     {
-        // crear la partida para una sala existente 
-        Game StartGameForRoom(string roomCode);
-        GameResult PlaceInitialCups(Guid gameId, int playerId, List<string> cups);
-        GameResult ApplySwap(Guid gameId, int playerId, int fromIndex, int toIndex);
-
-        // forzar cambio de turno 
-        Game EnsureTurnFresh(Guid gameId);
-        Game GetState(Guid gameId);
-
+        Task<Game> StartGameForRoom(string roomCode, CancellationToken ct = default); // crear partida
+        Task<GameResult> PlaceInitialCups(Guid gameId, int playerId, List<string> cups, CancellationToken ct = default); // fase inicial
+        Task<GameResult> ApplySwap(Guid gameId, int playerId, int fromIndex, int toIndex, CancellationToken ct = default); // juego 
+        Task<Game> EnsureTurnFresh(Guid gameId, CancellationToken ct = default);
+        Task<Game> GetState(Guid gameId, CancellationToken ct = default);
         IReadOnlyList<string> GetPalette();
     }
 }
