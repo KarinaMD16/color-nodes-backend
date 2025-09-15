@@ -187,6 +187,12 @@ namespace color_nodes_backend.Services
             if (g.IsFinished)
             {
                 g.Status = GameStatus.Finished;
+
+                var currentPlayer = await _db.Users.FindAsync(playerId);
+                if(currentPlayer != null)
+                {
+                    currentPlayer.Score += 10;
+                }
             }
             else if (g.MovesThisTurn >= g.MaxMovesPerTurn)
             {
