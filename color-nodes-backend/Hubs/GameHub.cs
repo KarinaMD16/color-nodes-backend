@@ -22,6 +22,7 @@ namespace color_nodes_backend.Hubs
         public Task JoinGame(string gameId)
             => Groups.AddToGroupAsync(Context.ConnectionId, $"game:{gameId}");
         // métodos para el juego
+        /*
         public async Task JoinGame(string gameId)
         {
             var group = $"game:{gameId}";
@@ -34,7 +35,7 @@ namespace color_nodes_backend.Hubs
             var group = $"game:{gameId}";
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, group);
             await Clients.Group(group).SendAsync("PlayerLeftGame", Context.ConnectionId);
-        }
+        }*/
     }
 
 }
