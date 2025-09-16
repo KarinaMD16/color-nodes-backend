@@ -63,6 +63,9 @@ namespace color_nodes_backend.Services
             var user = existingUser ?? new User { Username = username };
             if (existingUser == null) _context.Users.Add(user);
 
+            if(room.Users.Count == 4)
+                throw new InvalidOperationException("La sala está llena.");
+
             room.Users.Add(user);
             await _context.SaveChangesAsync();
 

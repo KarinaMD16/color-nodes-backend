@@ -11,5 +11,6 @@ namespace color_nodes_backend.Hubs
 
         Task PlayerJoined(string username);
         Task PlayerLeft(string username);
+        Task ChatMessage(object messageData);
     }
 }
