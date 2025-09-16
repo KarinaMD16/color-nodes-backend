@@ -9,5 +9,8 @@ namespace color_nodes_backend.Services
         Task<IEnumerable<UserDto>> GetAllUsersAsync();
         Task<UserDto?> UpdateUserAsync(int id, UpdateUserDto dto);
         Task<bool> DeleteUserAsync(int id);
+
+        Task<IEnumerable<UserDto>> GetUsersOrderedByScoreAsync();
+
     }
 }

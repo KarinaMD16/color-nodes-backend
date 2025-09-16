@@ -89,5 +89,19 @@ namespace color_nodes_backend.Services
 
             return true;
         }
+        public async Task<IEnumerable<UserDto>> GetUsersOrderedByScoreAsync()
+        {
+            return await _context.Users
+                .OrderByDescending(u => u.Score) 
+                .Select(u => new UserDto
+                {
+                    Id = u.Id,
+                    Username = u.Username ?? "",
+                    Score = u.Score,
+                    RoomId = u.RoomId
+                })
+                .ToListAsync();
+        }
+
     }
 }

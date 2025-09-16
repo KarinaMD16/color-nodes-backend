@@ -52,5 +52,12 @@ namespace color_nodes_backend.Controllers
             if (!success) return NotFound();
             return NoContent();
         }
+
+        [HttpGet("ordered-by-score")]
+        public async Task<ActionResult<IEnumerable<UserDto>>> GetUsersOrderedByScore()
+        {
+            var users = await _userService.GetUsersOrderedByScoreAsync();
+            return Ok(users);
+        }
     }
 }
