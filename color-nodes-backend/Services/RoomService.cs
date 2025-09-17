@@ -51,7 +51,16 @@ namespace color_nodes_backend.Services
                 .Include(r => r.Users)
                 .FirstOrDefaultAsync(r => r.Code == roomCode);
 
-            if (room == null) throw new KeyNotFoundException("Sala no encontrada.");
+            if (room == null)
+                throw new KeyNotFoundException("Sala no encontrada.");
+
+            // validar que no haya un juego activo en esa sala
+            var existingGame = await _context.Games
+                .Where(g => g.RoomCode == roomCode && g.Status != GameStatus.Finished)
+                .FirstOrDefaultAsync();
+
+            if (existingGame != null)
+                throw new InvalidOperationException("No puedes unirte, la sala ya tiene un juego en progreso.");
 
             var existingUser = await _context.Users
                 .Include(u => u.Room)
@@ -63,7 +72,7 @@ namespace color_nodes_backend.Services
             var user = existingUser ?? new User { Username = username };
             if (existingUser == null) _context.Users.Add(user);
 
-            if(room.Users.Count == 4)
+            if (room.Users.Count == 4)
                 throw new InvalidOperationException("La sala está llena.");
 
             room.Users.Add(user);
@@ -76,6 +85,7 @@ namespace color_nodes_backend.Services
                 Users = room.Users.ToList()
             };
         }
+
 
         public async Task<string> LeaveRoomAsync(int userId, string roomCode)
         {

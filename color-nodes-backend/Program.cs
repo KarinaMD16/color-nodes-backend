@@ -28,7 +28,7 @@ builder.Services.AddCors(opt =>
     opt.AddPolicy(MyCors, p => p
         .WithOrigins(
             "http://localhost:3174",          // front local
-            "http://26.233.244.31:3174"       // front abierto por tu IP Radmin
+            "http://26.48.186.190:7081"       // front abierto por tu IP Radmin
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
