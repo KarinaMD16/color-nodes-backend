@@ -9,5 +9,8 @@ namespace color_nodes_backend.Services
         Task<string> LeaveRoomAsync(int userId, string roomCode);
         Task<List<RoomResponse>> GetActiveRoomsAsync();
         Task<ServiceResult<RoomResponse>> GetRoomByCodeAsync(string roomCode);
+        Task<List<UserRankDto>> GetLeaderboardAsync(string roomCode);
+
+
     }
 }
