@@ -53,5 +53,13 @@ namespace color_nodes_backend.Controllers
 
             return Ok(result.Data);
         }
+
+        [HttpGet("{roomCode}/leaderboard")]
+        public async Task<ActionResult<List<UserRankDto>>> GetLeaderboard(string roomCode)
+        {
+            var leaderboard = await _roomService.GetLeaderboardAsync(roomCode);
+            return Ok(leaderboard);
+        }
+
     }
 }

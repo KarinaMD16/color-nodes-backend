@@ -164,5 +164,29 @@ namespace color_nodes_backend.Services
             };
         }
 
+
+        public async Task<List<UserRankDto>> GetLeaderboardAsync(string roomCode)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.Users)
+                .FirstOrDefaultAsync(r => r.Code == roomCode);
+
+            if (room == null)
+                throw new KeyNotFoundException("Sala no encontrada.");
+
+            return room.Users
+                .OrderByDescending(u => u.Score)
+                .Select((u, index) => new UserRankDto
+                {
+                    Rank = index + 1,
+                    Username = u.Username,
+                    Score = u.Score,
+                })
+                .ToList();
+        }
+
+
     }
+
+
 }
