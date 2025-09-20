@@ -11,8 +11,8 @@ using color_nodes_backend.Data;
 namespace color_nodes_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250906202445_AddGameAndGameMove")]
-    partial class AddGameAndGameMove
+    [Migration("20250920185549_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
