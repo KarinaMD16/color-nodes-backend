@@ -75,6 +75,9 @@ namespace color_nodes_backend.Services
             await _hub.Clients.Group($"room:{roomCode}").StateUpdated(state);
             await _hub.Clients.Group($"game:{game.Id}").StateUpdated(state);
 
+            await _hub.Clients.Group($"room:{roomCode}")
+        .GameStarted(game.Id.ToString());
+
             return game;
         }
 
