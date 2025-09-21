@@ -1,6 +1,7 @@
 ﻿using color_nodes_backend.Data;
 using color_nodes_backend.DTOs;
 using color_nodes_backend.Entities;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace color_nodes_backend.Services
@@ -17,16 +18,32 @@ namespace color_nodes_backend.Services
 
         public async Task<RoomResponse> CreateRoomAsync(string username)
         {
-            var existingUser = await _context.Users
-                .Include(u => u.Room)
+            User user = await _context.Users
+                .AsTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
 
-            if (existingUser != null && existingUser.RoomId != null)
+            if (user != null && user.RoomId != null)
                 throw new InvalidOperationException($"El usuario {username} ya está en una sala.");
 
-            var user = existingUser ?? new User { Username = username };
-            if (existingUser == null) _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            if (user == null)
+            {
+                try
+                {
+                    user = new User { Username = username };
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync(); 
+                }
+                catch (DbUpdateException ex) when (
+                    ex.InnerException is SqliteException sqliteEx &&
+                    sqliteEx.SqliteErrorCode == 19
+                )
+                {
+                    user = await _context.Users.FirstAsync(u => u.Username == username);
+
+                    if (user.RoomId != null)
+                        throw new InvalidOperationException($"El usuario {username} ya está en una sala.");
+                }
+            }
 
             var room = new Room
             {
@@ -45,6 +62,7 @@ namespace color_nodes_backend.Services
                 Users = room.Users.ToList()
             };
         }
+
         public async Task<RoomResponse> JoinRoomAsync(string username, string roomCode)
         {
             var room = await _context.Rooms

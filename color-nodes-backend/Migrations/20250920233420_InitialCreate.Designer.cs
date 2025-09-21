@@ -11,8 +11,13 @@ using color_nodes_backend.Data;
 namespace color_nodes_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
+<<<<<<<< HEAD:color-nodes-backend/Migrations/20250906202445_AddGameAndGameMove.Designer.cs
     [Migration("20250906202445_AddGameAndGameMove")]
     partial class AddGameAndGameMove
+========
+    [Migration("20250920233420_InitialCreate")]
+    partial class InitialCreate
+>>>>>>>> origin/master:color-nodes-backend/Migrations/20250920233420_InitialCreate.Designer.cs
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -141,12 +146,16 @@ namespace color_nodes_backend.Migrations
                         .HasDefaultValue(0.0);
 
                     b.Property<string>("Username")
-                        .HasMaxLength(50)
+                        .IsRequired()
+                        .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("RoomId");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
