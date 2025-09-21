@@ -68,6 +68,7 @@ namespace color_nodes_backend.Services
             };
 
             _db.Games.Add(game);
+            room.ActiveGameId = game.Id;
             await _db.SaveChangesAsync(ct);
 
             // signalR
@@ -189,10 +190,15 @@ namespace color_nodes_backend.Services
                 g.Status = GameStatus.Finished;
 
                 var currentPlayer = await _db.Users.FindAsync(playerId);
-                if(currentPlayer != null)
+                if (currentPlayer != null)
                 {
-                    currentPlayer.Score += 10;
+                    currentPlayer.Score += 10; // bonus al jugador que terminó
                 }
+
+                // liberar la sala
+                var room = await _db.Rooms.FirstAsync(r => r.Code == g.RoomCode, ct);
+                if (room.ActiveGameId == g.Id)
+                    room.ActiveGameId = null;
             }
             else if (g.MovesThisTurn >= g.MaxMovesPerTurn)
             {
@@ -201,7 +207,7 @@ namespace color_nodes_backend.Services
 
             await _db.SaveChangesAsync(ct);
 
-            // Emitir estado de aciertos y cambios
+            // aciertos y cambios
             var hitMsg = g.LastHits == 1 ? "1 acierto" : $"{g.LastHits} aciertos";
             var turnChanged = g.CurrentPlayerId != beforePlayer || g.Status == GameStatus.Finished;
 
