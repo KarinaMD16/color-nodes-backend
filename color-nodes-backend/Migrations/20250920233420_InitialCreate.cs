@@ -74,7 +74,7 @@ namespace color_nodes_backend.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Username = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Username = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false),
                     Score = table.Column<double>(type: "REAL", nullable: false, defaultValue: 0.0),
                     RoomId = table.Column<int>(type: "INTEGER", nullable: true)
                 },
@@ -99,6 +99,12 @@ namespace color_nodes_backend.Migrations
                 name: "IX_Users_RoomId",
                 table: "Users",
                 column: "RoomId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Username",
+                table: "Users",
+                column: "Username",
+                unique: true);
         }
 
         /// <inheritdoc />

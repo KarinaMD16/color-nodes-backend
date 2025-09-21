@@ -1,5 +1,6 @@
 ﻿using color_nodes_backend.Data;
 using color_nodes_backend.DTOs;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace color_nodes_backend.Services
@@ -15,14 +16,40 @@ namespace color_nodes_backend.Services
 
         public async Task<UserDto> CreateUserAsync(CreateUserDto dto)
         {
-            var user = new Entities.User
+            var user = await _context.Users
+                .AsTracking()
+                .FirstOrDefaultAsync(u => u.Username == dto.Username);
+
+            if (user != null)
+            {
+                return new UserDto
+                {
+                    Id = user.Id,
+                    Username = user.Username ?? "",
+                    Score = user.Score,
+                    RoomId = user.RoomId
+                };
+            }
+
+            user = new Entities.User
             {
                 Username = dto.Username,
                 Score = 0
             };
 
             _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (
+                ex.InnerException is SqliteException sqliteEx &&
+                sqliteEx.SqliteErrorCode == 19 // UNIQUE constraint failed
+            )
+            {
+                user = await _context.Users.FirstAsync(u => u.Username == dto.Username);
+            }
 
             return new UserDto
             {
