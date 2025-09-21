@@ -1,6 +1,7 @@
 ﻿using color_nodes_backend.Data;
 using color_nodes_backend.DTOs;
 using color_nodes_backend.Entities;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace color_nodes_backend.Services
@@ -17,34 +18,41 @@ namespace color_nodes_backend.Services
 
         public async Task<RoomResponse> CreateRoomAsync(string username)
         {
-            var existingUser = await _context.Users
+            User user = await _context.Users
+                .AsTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
 
-            if (existingUser != null && existingUser.RoomId != null)
+            if (user != null && user.RoomId != null)
                 throw new InvalidOperationException($"El usuario {username} ya está en una sala.");
 
-            var user = existingUser ?? new User { Username = username };
-            if (existingUser == null)
+            if (user == null)
             {
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync(); // guardamos para que tenga Id
+                try
+                {
+                    user = new User { Username = username };
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync(); 
+                }
+                catch (DbUpdateException ex) when (
+                    ex.InnerException is SqliteException sqliteEx &&
+                    sqliteEx.SqliteErrorCode == 19
+                )
+                {
+                    user = await _context.Users.FirstAsync(u => u.Username == username);
+
+                    if (user.RoomId != null)
+                        throw new InvalidOperationException($"El usuario {username} ya está en una sala.");
+                }
             }
 
             var room = new Room
             {
                 Code = Guid.NewGuid().ToString("N")[..6].ToUpper(),
-                LeaderId = user.Id
+                LeaderId = user.Id,
+                Users = new List<User> { user }
             };
 
-            // relacionar el user con la room
-            room.Users = new List<User>();
-            room.Users.Add(user);
-
             _context.Rooms.Add(room);
-
-            // también actualizamos el RoomId del user
-            user.RoomId = room.Id;
-
             await _context.SaveChangesAsync();
 
             return new RoomResponse

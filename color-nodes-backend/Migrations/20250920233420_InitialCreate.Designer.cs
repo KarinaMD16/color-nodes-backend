@@ -11,7 +11,7 @@ using color_nodes_backend.Data;
 namespace color_nodes_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250920185549_InitialCreate")]
+    [Migration("20250920233420_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -141,12 +141,16 @@ namespace color_nodes_backend.Migrations
                         .HasDefaultValue(0.0);
 
                     b.Property<string>("Username")
-                        .HasMaxLength(50)
+                        .IsRequired()
+                        .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("RoomId");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
 
                     b.ToTable("Users");
                 });
