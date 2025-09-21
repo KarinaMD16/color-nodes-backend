@@ -363,5 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 
 #SQLLite
-*.db-shm
-*.db-wal
+#*.db-shm
+#*.db-wal
