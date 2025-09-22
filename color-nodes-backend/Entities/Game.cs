@@ -38,16 +38,15 @@ namespace color_nodes_backend.Entities
             // control
         public int MovesThisTurn { get; set; } = 0;
         public int MaxMovesPerTurn { get; set; } = 1;
-        public int TurnDurationSeconds { get; set; } = 0; 
-        public DateTime TurnEndsAtUtc { get; set; } = DateTime.MaxValue;
-
+        public int TurnDurationSeconds { get; set; } = 0;
+        public DateTimeOffset TurnEndsAtUtc { get; set; }
 
         // aciertos
         public int LastHits { get; set; } = 0;
         public int TotalMoves { get; set; } = 0;
 
-        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset CreatedAtUtc { get; set; }
+        public DateTimeOffset UpdatedAtUtc { get; set; }
 
         [NotMapped]
         public bool IsFinished => TargetPattern.Count == 6 && LastHits == 6;

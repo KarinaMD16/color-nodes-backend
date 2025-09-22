@@ -59,12 +59,12 @@ namespace color_nodes_backend.Services
                 CurrentPlayerIndex = 0,
                 MovesThisTurn = 0,
                 MaxMovesPerTurn = 1,
-                TurnDurationSeconds = 0,                 // 0 = sin límite (modo pruebas)
-                TurnEndsAtUtc = DateTime.MaxValue,
+                TurnDurationSeconds = 30,                 // 0 = sin límite (modo pruebas)
+                TurnEndsAtUtc = DateTimeOffset.MaxValue,
                 LastHits = 0,
                 TotalMoves = 0,
-                CreatedAtUtc = DateTime.UtcNow,
-                UpdatedAtUtc = DateTime.UtcNow
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                UpdatedAtUtc = DateTimeOffset.UtcNow,
             };
 
             _db.Games.Add(game);
@@ -260,7 +260,7 @@ namespace color_nodes_backend.Services
 
         private static readonly List<string> PredefinedPalette = new()
         {
-            "#F8FFE5", "#06D6A0", "#1B9AAA", "#7067CF", "#EF476F", "#FFC43D"
+            "#FFBE86", "#FF2DD1", "#7D53DE", "#80CED7", "#8CD867", "#FFC43D"
         };
 
         private static int CountHits(IReadOnlyList<string> cups, IReadOnlyList<string> target)
@@ -278,10 +278,9 @@ namespace color_nodes_backend.Services
         {
             if (g.Status == GameStatus.Finished) return;
 
-            // Si el timer está desactivado (0), no se avanza por tiempo.
             if (g.TurnDurationSeconds > 0 && DateTime.UtcNow > g.TurnEndsAtUtc)
             {
-                AdvanceTurn(g);
+                AdvanceTurn(g); // esto recalcula TurnEndsAtUtc
             }
         }
 
@@ -292,13 +291,17 @@ namespace color_nodes_backend.Services
             g.MovesThisTurn = 0;
             g.CurrentPlayerIndex = NextIndex(g);
 
-            // reloj del siguiente turno:
             if (g.TurnDurationSeconds > 0)
-                g.TurnEndsAtUtc = DateTime.UtcNow.AddSeconds(g.TurnDurationSeconds);
+            { 
+                g.TurnEndsAtUtc = DateTimeOffset.UtcNow.AddSeconds(g.TurnDurationSeconds); 
+            }
             else
-                g.TurnEndsAtUtc = DateTime.MaxValue;
+            { 
+                g.TurnEndsAtUtc = DateTimeOffset.MaxValue; 
+            }
 
-            g.UpdatedAtUtc = DateTime.UtcNow;
+
+            g.UpdatedAtUtc = DateTimeOffset.UtcNow;
         }
 
         private static int NextIndex(Game g)

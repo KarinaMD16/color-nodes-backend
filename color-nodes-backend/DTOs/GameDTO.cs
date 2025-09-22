@@ -15,7 +15,7 @@ namespace color_nodes_backend.Contracts
        int TotalMoves,
        int? CurrentPlayerId,
        List<int> PlayerOrder,
-       DateTime TurnEndsAtUtc,
+       DateTimeOffset TurnEndsAtUtc,
        List<string>? TargetPattern,
        IReadOnlyList<string> AvailableColors
    );
