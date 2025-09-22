@@ -10,5 +10,6 @@
 
         // lista de users en la sala
         public List<User> Users { get; set; } = new List<User>();
+        public Guid? ActiveGameId { get; set; }
     }
 }
