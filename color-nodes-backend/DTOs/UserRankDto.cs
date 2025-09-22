@@ -4,6 +4,6 @@
     {
         public int Rank { get; set; }
         public string Username { get; set; } = string.Empty;
-        public double Score { get; set; }
+        public double Room_Score { get; set; }
     }
 }
