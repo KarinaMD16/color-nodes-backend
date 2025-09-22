@@ -193,6 +193,7 @@ namespace color_nodes_backend.Services
                 if (currentPlayer != null)
                 {
                     currentPlayer.Score += 10; // bonus al jugador que terminó
+                    currentPlayer.Room_Score += 10;
                 }
 
                 // liberar la sala
