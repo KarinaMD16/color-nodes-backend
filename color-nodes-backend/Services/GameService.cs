@@ -59,7 +59,7 @@ namespace color_nodes_backend.Services
                 CurrentPlayerIndex = 0,
                 MovesThisTurn = 0,
                 MaxMovesPerTurn = 1,
-                TurnDurationSeconds = 30,                 // 0 = sin límite (modo pruebas)
+                TurnDurationSeconds = 30,
                 TurnEndsAtUtc = DateTimeOffset.MaxValue,
                 LastHits = 0,
                 TotalMoves = 0,
@@ -174,7 +174,7 @@ namespace color_nodes_backend.Services
             g.MovesThisTurn++;
             g.TotalMoves++;
             g.LastHits = CountHits(g.Cups, g.TargetPattern);
-            g.UpdatedAtUtc = DateTime.UtcNow;
+            g.UpdatedAtUtc = DateTimeOffset.UtcNow;
 
             _db.GameMoves.Add(new GameMove
             {
@@ -311,7 +311,6 @@ namespace color_nodes_backend.Services
             return (g.CurrentPlayerIndex + 1) % g.PlayerOrder.Count;
         }
 
-        // Mapeo único hacia el contrato del frontend
         private GameStateResponse ToResponse(Game g) => new(
             GameId: g.Id,
             RoomCode: g.RoomCode,
