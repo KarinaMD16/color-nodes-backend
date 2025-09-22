@@ -119,6 +119,7 @@ namespace color_nodes_backend.Services
 
             room.Users.Remove(user);
             user.RoomId = null;
+            user.Room_Score = 0;
 
             if (room.LeaderId == user.Id && room.Users.Any())
             {
@@ -193,12 +194,12 @@ namespace color_nodes_backend.Services
                 throw new KeyNotFoundException("Sala no encontrada.");
 
             return room.Users
-                .OrderByDescending(u => u.Score)
+                .OrderByDescending(u => u.Room_Score)
                 .Select((u, index) => new UserRankDto
                 {
                     Rank = index + 1,
                     Username = u.Username,
-                    Score = u.Score,
+                    Room_Score = u.Room_Score,
                 })
                 .ToList();
         }
