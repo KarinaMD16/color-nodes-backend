@@ -24,10 +24,10 @@ namespace color_nodes_backend.Data
                 entity.HasKey(u => u.Id);
 
                 entity.Property(u => u.Username)
-                        .IsRequired() // ⚡ obligatorio
+                        .IsRequired() 
                         .HasMaxLength(10);
 
-                entity.HasIndex(u => u.Username) // ⚡ índice único
+                entity.HasIndex(u => u.Username) 
                       .IsUnique();
 
                 entity.Property(u => u.Score)

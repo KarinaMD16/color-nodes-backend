@@ -86,7 +86,7 @@ namespace color_nodes_backend.Services
 
             var beforePlayer = g.CurrentPlayerId;
 
-            EnsureTurnFreshInTx(g); // avance por tiempo si aplica
+            EnsureTurnFreshInTx(g); // avance por tiempo
 
             if (g.Status != GameStatus.Setup)
                 throw new InvalidOperationException("La partida no está en estado de Setup.");
@@ -111,7 +111,7 @@ namespace color_nodes_backend.Services
                               g.CurrentPlayerId != beforePlayer ||
                               g.MovesThisTurn == 0;
 
-            // Emitir eventos SignalR
+            //signalR
             var state = ToResponse(g);
             var grp = $"game:{g.Id}";
             await _hub.Clients.Group(grp).StateUpdated(state);
@@ -235,7 +235,6 @@ namespace color_nodes_backend.Services
 
             await _db.SaveChangesAsync(ct);
 
-            // Si cambió por timeout, avisamos a todos
             if (changed)
             {
                 var state = ToResponse(g);
@@ -281,7 +280,7 @@ namespace color_nodes_backend.Services
 
             if (g.TurnDurationSeconds > 0 && DateTime.UtcNow > g.TurnEndsAtUtc)
             {
-                AdvanceTurn(g); // esto recalcula TurnEndsAtUtc
+                AdvanceTurn(g);
             }
         }
 

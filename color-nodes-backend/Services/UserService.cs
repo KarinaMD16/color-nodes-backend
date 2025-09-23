@@ -45,7 +45,7 @@ namespace color_nodes_backend.Services
             }
             catch (DbUpdateException ex) when (
                 ex.InnerException is SqliteException sqliteEx &&
-                sqliteEx.SqliteErrorCode == 19 // UNIQUE constraint failed
+                sqliteEx.SqliteErrorCode == 19 
             )
             {
                 user = await _context.Users.FirstAsync(u => u.Username == dto.Username);

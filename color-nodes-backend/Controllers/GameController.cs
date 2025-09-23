@@ -25,7 +25,7 @@ namespace color_nodes_backend.Controllers
             return Ok(ToResponse(g));
         }
 
-        // Fase inicial: colocar los 6 vasos
+        // fase inicial: colocar los 6 vasos
         [HttpPost("{id:guid}/place-initial")]
         public async Task<ActionResult<GameStateResponse>> PlaceInitial(
             Guid id,

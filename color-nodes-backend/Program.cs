@@ -28,7 +28,7 @@ builder.Services.AddCors(opt =>
     opt.AddPolicy(MyCors, p => p
         .WithOrigins(
             "http://localhost:3174",          // front local
-            "http://26.233.244.31:7081"       // front abierto por tu IP Radmin
+            "http://26.233.244.31:7081"       // front radmin
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
@@ -38,25 +38,18 @@ builder.Services.AddCors(opt =>
 
 var app = builder.Build();
 
-// Swagger solo en dev
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Usa la MISMA política que definiste arriba
 app.UseCors(MyCors);
-
-// ?? Trabajando en HTTP ? quita la redirección a HTTPS
-// app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
-// Opcional: endpoint de salud para probar conectividad
 app.MapGet("/health", () => "OK");
 
 app.MapControllers();
-app.MapHub<GameHub>("/gameHub"); // puedes añadir .RequireCors(MyCors) si quieres
+app.MapHub<GameHub>("/gameHub"); 
 
 app.Run();
